@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import RxSwift
 
 class ChatModuleImp: ChatModule {
     
@@ -14,35 +13,40 @@ class ChatModuleImp: ChatModule {
     private var orderService: OrderServiceProtocol?
     private var chatService: ChatServiceProtocol?
     private var consultation: ConsultationInformationObject?
-    private let bag = DisposeBag()
     private var chatId: Int?
-    private var writingStatus: OpponentWritingStatus = .notWriting
-    private var onlineStatus: OpponentOnlineStatus = .offline
     
-    var onOpponentOnlineStatusChangeSubject = PublishSubject<OpponentOnlineStatus>()
-    var onOpponentWritingStatusChangeSubject = PublishSubject<OpponentWritingStatus>()
+    var onOpponentOnlineStatusChangeSubject: ((OpponentOnlineStatus) -> Void)?
+    var onOpponentWritingStatusChangeSubject: ((OpponentWritingStatus) -> Void)?
+    private var writingStatus: OpponentWritingStatus = .notWriting {
+        didSet {
+            onOpponentWritingStatusChangeSubject?(writingStatus)
+        }
+    }
+    private var onlineStatus: OpponentOnlineStatus = .offline {
+        didSet {
+            onOpponentOnlineStatusChangeSubject?(onlineStatus)
+        }
+    }
+    
     var chatHistory = [HistoryChatMessage]()
     var webSocketChatService: WebSocketChatServiceProtocol?
     var onMessage: ((HistoryChatMessage?) -> Void)?
     
     func create(consultationId: String,
                 token: String,
-                userToken: String) -> Completable {
+                userToken: String,
+                complete: ((_ complete: Bool, _ error: Error?) -> Void)?) {
         requestManager = RequestManager(host: "https://test-api.drtelemed.ru/api/v1/", token: token , userToken: userToken)
         
         orderService = OrderService(requestManager: requestManager)
         chatService = ChatService(requestManager: requestManager, chatParser: ChatParser())
         
-        return Completable.create { [weak self] (completable) -> Disposable in
-            self?.getOrder(id: consultationId) { (success, error) in
-                if success  {
-                    completable(.completed)
-                } else {
-                    completable(.error(CommonError.customError(error ?? "Unknown error")))
-                }
+        self.getOrder(id: consultationId) { (success, error) in
+            if success  {
+                complete?(true, nil)
+            } else {
+                complete?(false, CommonError.customError(error ?? "Unknown error"))
             }
-            
-            return Disposables.create()
         }
     }
     
@@ -80,16 +84,15 @@ class ChatModuleImp: ChatModule {
         return onlineStatus
     }
     
-    func loadChatHistory(lastMessageId: String? = nil, maxMessages: Int = 100) -> Observable<[HistoryChatMessage]> {
-        return Observable.create { [weak self] (observable) -> Disposable in
-            self?.getMessages(chatID: self?.chatId ?? 0, limit: maxMessages) { (success, error) in
-                if success  {
-                    observable.onNext(self?.chatHistory ?? [])
-                } else {
-                    observable.onError(CommonError.customError(error ?? "Unknown error"))
-                }
+    func loadChatHistory(lastMessageId: String? = nil,
+                         maxMessages: Int = 100,
+                         _ action: (([HistoryChatMessage], Error?) -> Void)?) {
+        self.getMessages(chatID: self.chatId ?? 0, limit: maxMessages) { [weak self] (success, error) in
+            if success  {
+                action?(self?.chatHistory ?? [], nil)
+            } else {
+                action?([], CommonError.customError(error ?? "Unknown error"))
             }
-            return Disposables.create()
         }
     }
     
@@ -145,7 +148,6 @@ private extension ChatModuleImp {
                 self.webSocketChatService?.onTyping = { [weak self] (isTyping, text) in
                     let status: OpponentWritingStatus = isTyping ? .writing : .notWriting
                     self?.writingStatus = status
-                    self?.onOpponentWritingStatusChangeSubject.on(.next(status))
                 }
                 
                 self.webSocketChatService?.onChatStatusChange = { [weak self] onStatus, _ in
@@ -164,7 +166,7 @@ private extension ChatModuleImp {
                         break
                     }
                     self?.onlineStatus = sdkStatus
-                    self?.onOpponentOnlineStatusChangeSubject.on(.next(sdkStatus))
+//                    self?.onOpponentOnlineStatusChangeSubject.on(.next(sdkStatus))
                 }
                 
                 self.webSocketChatService?.connect()
@@ -176,14 +178,15 @@ private extension ChatModuleImp {
     }
     
     private func getMessages(chatID: Int, limit: Int, _ action: ((Bool, String?) -> Void)?) {
-        chatService?.getMessagesList(chatID: Int64(chatID), limit: 20)
-            .subscribe(onNext: { [weak self] result in
-                self?.chatHistory = result?.messageList ?? []
-                action?(true, nil)
-            }, onError: { (error) in
+        _ = chatService?.getMessagesList(chatID: Int64(chatID),
+                                     limit: 20,
+                                     completionBlock: { [weak self] chat, error in
+            if let error = error {
                 action?(false, error.localizedDescription)
-            }, onCompleted: nil,
-            onDisposed: nil)
-            .disposed(by: bag)
+            } else {
+                self?.chatHistory = chat?.messageList ?? []
+                action?(true, nil)
+            }
+        })
     }
 }

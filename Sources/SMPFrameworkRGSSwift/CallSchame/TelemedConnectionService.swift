@@ -1,7 +1,5 @@
 import Foundation
 import CoreTelephony
-import RxSwift
-import RxCocoa
 import SMPFrameworkRGSObjective
 
 enum TelemedState {
@@ -23,9 +21,12 @@ protocol TelemedConnectionServiceProtocol {
     var delegate: TelemedConnectionServiceProtocolDelegate? { get set }
     var telemedState: TelemedState { get }
     
-    var localVideoCapturer: BehaviorRelay<RTCCameraVideoCapturer?> { get }
-    var localVideoTrack: BehaviorRelay<RTCVideoTrack?> { get }
-    var remoteVideoTrack: BehaviorRelay<RTCVideoTrack?> { get }
+    var localVideoCapturerCallback: (( _ capture: RTCCameraVideoCapturer?) -> Void)? { get set }
+    var localVideoCapturer: RTCCameraVideoCapturer? { get }
+    var localVideoTrackCallback: (( _ track: RTCVideoTrack?) -> Void)? { get set }
+    var localVideoTrack: RTCVideoTrack? { get }
+    var remoteVideoTrackCallback: (( _ track: RTCVideoTrack?) -> Void)? { get set }
+    var remoteVideoTrack: RTCVideoTrack? { get }
 
     func completeTelemedCall()
     func callUpTelemed()
@@ -50,17 +51,29 @@ class TelemedConnectionService: NSObject, TelemedConnectionServiceProtocol {
     private var token: String
     var telemedState: TelemedState
     
-    var localVideoCapturer: BehaviorRelay<RTCCameraVideoCapturer?>
-    var localVideoTrack: BehaviorRelay<RTCVideoTrack?>
-    var remoteVideoTrack: BehaviorRelay<RTCVideoTrack?>
+    var localVideoCapturerCallback: (( _ capture: RTCCameraVideoCapturer?) -> Void)?
+    var localVideoCapturer: RTCCameraVideoCapturer? {
+        didSet {
+            localVideoCapturerCallback?(localVideoCapturer)
+        }
+    }
+    var localVideoTrackCallback: (( _ track: RTCVideoTrack?) -> Void)?
+    var localVideoTrack: RTCVideoTrack? {
+        didSet {
+            localVideoTrackCallback?(localVideoTrack)
+        }
+    }
+    var remoteVideoTrackCallback: (( _ track: RTCVideoTrack?) -> Void)?
+    var remoteVideoTrack: RTCVideoTrack? {
+        didSet {
+            remoteVideoTrackCallback?(remoteVideoTrack)
+        }
+    }
     
     init(telemedService: TelemedServiceProtocol, consultationID: Int?, token: String) {
         self.telemedService = telemedService
         self.consultationID = consultationID
         telemedState = .disconnect
-        localVideoTrack = BehaviorRelay(value: nil)
-        remoteVideoTrack = BehaviorRelay(value: nil)
-        localVideoCapturer = BehaviorRelay(value: nil)
         self.token = token
         super.init()
         client = ARDAppClient(delegate: self)
@@ -117,9 +130,9 @@ class TelemedConnectionService: NSObject, TelemedConnectionServiceProtocol {
     }
     
     func completeTelemedCall() {
-        localVideoTrack.accept(nil)
-        localVideoCapturer.accept(nil)
-        remoteVideoTrack.accept(nil)
+        localVideoTrack = nil
+        localVideoCapturer = nil
+        remoteVideoTrack = nil
         delegate?.changeTelemedState(state: .disconnect)
         if telemedState == .connect {
             telemedState = .disconnect
@@ -160,9 +173,9 @@ class TelemedConnectionService: NSObject, TelemedConnectionServiceProtocol {
     }
     
     func sendBye() {
-        localVideoTrack.accept(nil)
-        localVideoCapturer.accept(nil)
-        remoteVideoTrack.accept(nil)
+        localVideoTrack = nil
+        localVideoCapturer = nil
+        remoteVideoTrack = nil
         if telemedState == .connect {
             telemedState = .disconnect
         }
@@ -205,7 +218,7 @@ extension TelemedConnectionService: ARDAppClientDelegate {
         let fps = selectFps(for: format)
         
         localCapturer.startCapture(with: device, format: format!, fps: fps)
-        self.localVideoCapturer.accept(localCapturer)
+        localVideoCapturer = localCapturer
     }
     
     func didCreateLocalCapturer(_ service: WebRTCCallService, localCapturer: RTCCameraVideoCapturer) {
@@ -223,27 +236,27 @@ extension TelemedConnectionService: ARDAppClientDelegate {
         let fps = selectFps(for: format)
         
         localCapturer.startCapture(with: device, format: format!, fps: fps)
-        self.localVideoCapturer.accept(localCapturer)
+        localVideoCapturer = localCapturer
     }
     
     func didReciveLocalVideoTrack(_ service: WebRTCCallService, localVideoTrack: RTCVideoTrack) {
-        if self.localVideoTrack.value != localVideoTrack {
-            self.localVideoTrack.accept(localVideoTrack)
+        if self.localVideoTrack != localVideoTrack {
+            self.localVideoTrack = localVideoTrack
         }
     }
     
     func didReciveRemoteVideoTrack(_ service: WebRTCCallService, remoteVideoTrack: RTCVideoTrack) {
-        if localVideoTrack.value != remoteVideoTrack {
-            self.remoteVideoTrack.accept(remoteVideoTrack)
+        if localVideoTrack != remoteVideoTrack {
+            self.remoteVideoTrack = remoteVideoTrack
         }
     }
     
     func reconnectNeed() {
         // когда не подключился ARDSignalingChannel
         sendBye()
-        localVideoTrack.accept(nil)
-        localVideoCapturer.accept(nil)
-        remoteVideoTrack.accept(nil)
+        localVideoTrack = nil
+        localVideoCapturer = nil
+        remoteVideoTrack = nil
         if telemedState == .connect {
             telemedState = .disconnect
         }
@@ -258,9 +271,9 @@ extension TelemedConnectionService: ARDAppClientDelegate {
     
     func needLeave() {
         // когда нам приходит  bye с сервера
-        localVideoTrack.accept(nil)
-        localVideoCapturer.accept(nil)
-        remoteVideoTrack.accept(nil)
+        localVideoTrack = nil
+        localVideoCapturer = nil
+        remoteVideoTrack = nil
         if telemedState == .connect {
             telemedState = .disconnect
         }
@@ -288,14 +301,14 @@ extension TelemedConnectionService: ARDAppClientDelegate {
     }
     
     func appClient(_ client: ARDAppClient!, didReceiveLocalVideoTrack localVideoTrack: RTCVideoTrack!) {
-        if self.localVideoTrack.value != localVideoTrack {
-            self.localVideoTrack.accept(localVideoTrack)
+        if self.localVideoTrack != localVideoTrack {
+            self.localVideoTrack = localVideoTrack
         }
     }
     
     func appClient(_ client: ARDAppClient!, didReceiveRemoteVideoTrack remoteVideoTrack: RTCVideoTrack!) {
-        if localVideoTrack.value != remoteVideoTrack {
-            self.remoteVideoTrack.accept(remoteVideoTrack)
+        if localVideoTrack != remoteVideoTrack {
+            self.remoteVideoTrack = remoteVideoTrack
         }
     }
     

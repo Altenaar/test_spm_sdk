@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import RxSwift
 import WebRTC
 
 enum VideoViewControllerCameraPosition {
@@ -20,7 +19,7 @@ class CallsModuleImp: CallsModule {
     
     //video
     var videoCallScreen: VideoViewWebRtc?
-    var bag = DisposeBag()
+//    var bag = DisposeBag()
     
     private var localVideoTrack: RTCVideoTrack?
     private var remoteVideoTrack: RTCVideoTrack?
@@ -29,7 +28,9 @@ class CallsModuleImp: CallsModule {
     private var localCapturer: RTCCameraVideoCapturer?
     
     var position: VideoViewControllerCameraPosition = .front
-    var incomingCallSubject = PublishSubject<IncomingCallInfo>()
+    
+    var incomingCallSubject: (( _ info: IncomingCallInfo)-> Void)?
+    
     var muted: Bool = false
     var speakerEnabled: Bool = true {
         didSet {
@@ -47,9 +48,11 @@ class CallsModuleImp: CallsModule {
     }
     
     // video connection
-    var errorInVideoConnect = PublishSubject<Error?>() // not need
-    var updateSizeVideoView = PublishSubject<CGSize?>() // not need
-    var stateTelemedConnect = PublishSubject<Int>() //stateTelemedConnect 1  - connect 0 - disconnect
+    var errorInVideoConnect: (( _ error: Error?) -> Void)?
+    var updateSizeVideoView: (( _ size: CGSize?) -> Void)?
+    var sizeVideoView: CGSize?
+    var stateTelemedConnect: (( _ state: Int) -> Void)? //stateTelemedConnect 1  - connect 0 - disconnect
+    var state: Int = 0
     
     func create(consultationId: String,
                 token: String,
@@ -58,27 +61,19 @@ class CallsModuleImp: CallsModule {
         telemedConnectionService = TelemedConnectionService(telemedService: TelemedService(requestManager: requestManager),
                                                             consultationID: Int(consultationId),
                                                             token: userToken)
-        errorInVideoConnect.onNext(nil)
-        updateSizeVideoView.onNext(nil)
-        stateTelemedConnect.onNext(0)
         telemedConnectionService?.delegate = self
-        
-        telemedConnectionService?.localVideoTrack.asObservable().subscribe(onNext: { [weak self] videoTrack in
+        telemedConnectionService?.localVideoTrackCallback = { [weak self] videoTrack in
             guard let strongSelf = self, let videoTrack = videoTrack else { return }
             strongSelf.updateLocalVideoTrack(videoTrack)
-        })
-        .disposed(by: bag)
-        telemedConnectionService?.remoteVideoTrack
-            .asObservable().subscribe(onNext: { [weak self] videoTrack in
-                guard let strongSelf = self, let videoTrack = videoTrack else { return }
-                strongSelf.updateRemoteVideoTrack(videoTrack)
-            })
-            .disposed(by: bag)
-        telemedConnectionService?.localVideoCapturer.asObservable().subscribe(onNext: { [weak self] capturer in
+        }
+        telemedConnectionService?.remoteVideoTrackCallback = { [weak self] videoTrack in
+            guard let strongSelf = self, let videoTrack = videoTrack else { return }
+            strongSelf.updateRemoteVideoTrack(videoTrack)
+        }
+        telemedConnectionService?.localVideoCapturerCallback = { [weak self] capturer in
             guard let strongSelf = self, let capturer = capturer else { return }
             strongSelf.updateLocalViewCaptureTrack(capturer)
-            
-        }).disposed(by: bag)
+        }
     }
     
     func switchCamera() {
@@ -141,7 +136,8 @@ class CallsModuleImp: CallsModule {
 extension CallsModuleImp: RTCVideoViewDelegate {
     func videoView(_ videoView: RTCVideoRenderer, didChangeVideoSize size: CGSize) {
         if remoteVideoTrack != nil {
-            updateSizeVideoView.onNext(size)
+            sizeVideoView = size
+            updateSizeVideoView?(size)
         }
     }
 }
@@ -237,9 +233,11 @@ extension CallsModuleImp: TelemedConnectionServiceProtocolDelegate {
     func changeTelemedState(state: TelemedState) {
         switch state {
         case .connect:
-            stateTelemedConnect.onNext(1)
+            self.state = 1
+            stateTelemedConnect?(1)
         case .disconnect:
-            stateTelemedConnect.onNext(0)
+            self.state = 0
+            stateTelemedConnect?(0)
         case .connectioning, .leaving:
             break
         }
@@ -254,7 +252,7 @@ extension CallsModuleImp: TelemedConnectionServiceProtocolDelegate {
     }
     
     func returnTelemedError(error: Error?) {
-        errorInVideoConnect.onNext(error)
+        errorInVideoConnect?(error)
     }
 }
 

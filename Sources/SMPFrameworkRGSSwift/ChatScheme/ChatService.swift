@@ -8,7 +8,6 @@
 import Foundation
 import Alamofire
 import SwiftyJSON
-import RxSwift
 
 enum MessagesDirection: Int {
     /// From elder to newer.
@@ -24,11 +23,9 @@ protocol ChatServiceProtocol: ServiceProtocol {
     func sendFile(_ data: String, fileName: String, format: String, chatId: Int, messageId: String, messageParams: [String: Any], completion: @escaping (Bool, JSON?) -> Void)
     func getJWTToken(_ chatId: Int, completion: @escaping (Int, String?) -> Void)
     @discardableResult func fetchChatListWith(_ isOpened: Bool, completionBlock:@escaping ([Chat]?, Error?) -> Void) -> Alamofire.Request?
-    //    @discardableResult func getMessagesList(limit: Int?, completionBlock: @escaping((chat: Chat, messages: [Message])?, Error?) -> Void) -> Alamofire.Request?
-//    func getMessagesList(chatID: Int64,
-//                         limit: Int?) -> Observable<(messages: [Message]?, chat: Chat?)>
-    func getMessagesList(chatID: Int64,
-                         limit: Int?) -> Observable<ChatObject?>
+    @discardableResult func getMessagesList(chatID: Int64,
+                                            limit: Int?,
+                                            completionBlock: @escaping (ChatObject?, Error?) -> Void) -> Alamofire.Request?
 }
 
 class ChatService {
@@ -96,7 +93,8 @@ extension ChatService: ChatServiceProtocol {
         })
     }
     
-    func fetchChatListWith(_ isOpened: Bool, completionBlock: @escaping ([Chat]?, Error?) -> Void) -> Alamofire.Request? {
+    func fetchChatListWith(_ isOpened: Bool,
+                           completionBlock: @escaping ([Chat]?, Error?) -> Void) -> Alamofire.Request? {
         let parameters = ["isOpened": isOpened]
         return requestManager.makeGetRequest("\(kChatPath)list/2", keyPath: nil, parameters: parameters, completion: { [weak self] (result: CodableRequestResult<[Chat]>) in
             guard let _ = self else { return }
@@ -111,39 +109,27 @@ extension ChatService: ChatServiceProtocol {
     }
     
     func getMessagesList(chatID: Int64,
-                         limit: Int? = 20) -> Observable<ChatObject?> {
+                         limit: Int? = 20,
+                         completionBlock: @escaping (ChatObject?, Error?) -> Void) -> Alamofire.Request? {
         var finalParams: [String: Any] = [:]
         finalParams["chatId"] = chatID
         finalParams["active"] = "true" // send as String
         if let limit = limit {
             finalParams["limit"] = limit
         }
-        
-        return Observable.create { observer in
-            _ = self.requestManager.makeGetRequest("\(self.kChatPath)\(self.kMessagePath)get-list-paginated/2",
-                                                   parameters: finalParams as [String: AnyObject]) { result in
-                switch result {
-                case .success(let json):
-                    //logs chat list
-//                    print("\(json)")
-                    do {
-                        if let data = json["data"].array?.first {
-                            let jsonData = try data.rawData()
-                            let decoder = JSONDecoder()
-                            let responseObject = try? decoder.decode(ChatObject.self, from: jsonData)
-                            observer.onNext(responseObject)
-                        }
-                    } catch {
-                        print("Chat/messages parsing error")
-                        observer.onError(error)
-                    }
-                case .failure(let error):
-                    observer.onError(error)
-                }
-                observer.onCompleted()
+        return requestManager.makeGetRequest("\(self.kChatPath)\(self.kMessagePath)get-list-paginated/2",
+                                             keyPath: nil,
+                                             parameters: finalParams as [String: AnyObject],
+                                             completion: { [weak self] (result: CodableRequestResult<ChatObject?>) in
+            guard let _ = self else { return }
+            switch result {
+            case .success(let data):
+                print("fetchChatListWith \(String(describing: data))")
+                completionBlock(data, nil)
+            case .failure(let error):
+                completionBlock(nil, error)
             }
-            return Disposables.create()
-        }
+        })
     }
 }
 

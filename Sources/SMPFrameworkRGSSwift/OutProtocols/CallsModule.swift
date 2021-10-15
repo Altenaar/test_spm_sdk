@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import RxSwift
 import UIKit
 
 public protocol VideoViewWebRtc {
@@ -30,7 +29,7 @@ public protocol CallsModule {
     /**
      Subject, в который прокидываются события при входящем звонке
      */
-    var incomingCallSubject: PublishSubject<IncomingCallInfo> {get}
+    var incomingCallSubject: (( _ info: IncomingCallInfo)-> Void)? { get set }
 
     /**
      Вызывается для принятия входящего звонка. Срабатывает только если есть активный входящий звонок. В противном случае ничего не происходит
@@ -70,15 +69,24 @@ public protocol CallsModule {
      */
     func switchCamera()
     
+    
+    /**
+     * Call settings
+     */
+    func clearCall() // use if call end
+    func changeRotationCamera() // change rotation local camera
+    func setVideoCallScreen(callView: VideoViewWebRtc) // set callScreen for set video remote and local
+
+    /**
+     * for update size video call
+     */
+    var updateSizeVideoView: (( _ size: CGSize?) -> Void)? { get set } // return update size for video
+    var sizeVideoView: CGSize? { get } // current size for video
+    
     /**
      * for video call
      * stateTelemedConnect 1  - connect 0 - disconnect
      */
-//    var remoteVideo: PublishSubject<RTCVideoTrack?> {get}
-//    var localVideo: PublishSubject<RTCVideoTrack?> {get}
-    var updateSizeVideoView: PublishSubject<CGSize?> {get} // return update size for video
-    func clearCall() // use if call end
-    func changeRotationCamera() // change rotation local camera
-    func setVideoCallScreen(callView: VideoViewWebRtc) // set callScreen for set video remote and local
-    var stateTelemedConnect: PublishSubject<Int> {get}
+    var stateTelemedConnect: (( _ state: Int) -> Void)? { get set } //stateTelemedConnect 1  - connect 0 - disconnect
+    var state: Int { get } // current state
 }

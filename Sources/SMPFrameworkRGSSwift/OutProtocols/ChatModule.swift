@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import RxSwift
 
 public protocol ChatModule {
     /**
@@ -16,7 +15,10 @@ public protocol ChatModule {
      - Parameter token: токен
      - Parameter userToken: токен пользователя
     */
-    func create(consultationId: String, token: String, userToken: String) -> Completable
+    func create(consultationId: String,
+                token: String,
+                userToken: String,
+                complete: ((_ complete: Bool, _ error: Error?) -> Void)?)
     
     /**
      Завершается работу чата.
@@ -43,7 +45,7 @@ public protocol ChatModule {
     /**
      Subject, в который прокидываются события, когда изменяется статус набора текста оппонента
     */
-    var onOpponentWritingStatusChangeSubject: PublishSubject<OpponentWritingStatus> { get }
+    var onOpponentWritingStatusChangeSubject: ((OpponentWritingStatus) -> Void)? { get set }
     
     /**
      Получение последнего известного статуса набора текста оппонента
@@ -53,7 +55,7 @@ public protocol ChatModule {
     /**
      Subject, в который прокидываются события, когда изменяется онлайн-статус оппонента
     */
-    var onOpponentOnlineStatusChangeSubject: PublishSubject<OpponentOnlineStatus> { get }
+    var onOpponentOnlineStatusChangeSubject: ((OpponentOnlineStatus) -> Void)? { get set }
     
     /**
      Текущий онлайн-статус оппонента
@@ -66,7 +68,9 @@ public protocol ChatModule {
      - Parameter maxMessages: максимальное количество сообщений, которое тянется
      - Returns: Сообщения истории. Если возвращается пустой список, значит сообщений в истории больше нет
      */
-    func loadChatHistory(lastMessageId: String?, maxMessages: Int) -> Observable<[HistoryChatMessage]>
+    func loadChatHistory(lastMessageId: String?,
+                         maxMessages: Int,
+                         _ action: (([HistoryChatMessage], Error?) -> Void)?)
     
     /**
      Информирует о том, что пользователь набирает сообщение
