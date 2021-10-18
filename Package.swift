@@ -18,7 +18,8 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/Alamofire/Alamofire.git", .exact("5.3.0")),
+//        .package(url: "https://github.com/ReactiveX/RxSwift.git", .exact("6.2.0")),
+        .package(url: "https://github.com/Alamofire/Alamofire.git", .upToNextMajor(from: "5.2.0")),
         .package(url: "https://github.com/SwiftyJSON/SwiftyJSON.git", from: "4.0.0"),
         .package(url: "https://github.com/alexpiezo/WebRTC.git", from: "1.0.0"),
         .package(url: "https://github.com/daltoniam/Starscream.git", from: "3.1.0"),

@@ -1,1 +1,3 @@
-# test_spm_sdk
+# SMPFrameworkRGS
+
+A description of this package.
