@@ -15,11 +15,11 @@ public class HistoryChatMessage: Codable {
     public let message, serviceMessage: String?
     public let name: String?
     public let messageID: String?
+    public let userType: String?
     
     // MARK: - Internal
     let timestamp, dateInsert, realMessageID: String?
     let chatID: Int?
-    let userType: String?
     let image: String?
     let userPhoto: String?
     let userID: Int?

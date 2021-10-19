@@ -1,4 +1,4 @@
-// swift-tools-version:5.4
+// swift-tools-version:5.3
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -21,7 +21,7 @@ let package = Package(
 //        .package(url: "https://github.com/ReactiveX/RxSwift.git", .exact("6.2.0")),
         .package(url: "https://github.com/Alamofire/Alamofire.git", .upToNextMajor(from: "5.2.0")),
         .package(url: "https://github.com/SwiftyJSON/SwiftyJSON.git", from: "4.0.0"),
-        .package(url: "https://github.com/alexpiezo/WebRTC.git", from: "1.0.0"),
+//        .package(url: "https://github.com/alexpiezo/WebRTC.git", from: "1.0.0"),
         .package(url: "https://github.com/daltoniam/Starscream.git", from: "3.1.0"),
     ],
     targets: [
@@ -29,7 +29,7 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "SMPFrameworkRGSSwift",
-            dependencies: ["SMPFrameworkRGSObjective", "Alamofire", "SwiftyJSON", "WebRTC", "Starscream"],
+            dependencies: ["SMPFrameworkRGSObjective", "Alamofire", "SwiftyJSON", "WebRTCLocal", "Starscream"],
             linkerSettings: [
               .linkedFramework("Foundation"),
               .linkedFramework("CoreTelephony"),
@@ -37,9 +37,13 @@ let package = Package(
             ]),
         .target(
             name: "SMPFrameworkRGSObjective",
-            dependencies: ["WebRTC"],
+            dependencies: ["WebRTCLocal"],
             path: "Sources/SMPFrameworkRGSObjective",
             publicHeadersPath: "Frameworks/"
-            )
+            ),
+        .binaryTarget(
+            name: "WebRTCLocal",
+            path: "frame/WebRTC.xcframework"
+        ),
     ]
 )
