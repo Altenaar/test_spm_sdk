@@ -14,7 +14,7 @@ enum VideoViewControllerCameraPosition {
 }
 
 class CallsModuleImp: CallsModule {
-    private var requestManager: RequestManagerProtocol = RequestManager(host: "https://test-api.drtelemed.ru/api/v1/", token: "", userToken: "")
+    private var requestManager: RequestManagerProtocol = RequestManager(host: "https://dr-telemed.ru/api/v1/", token: "", userToken: "")
     var telemedConnectionService: TelemedConnectionServiceProtocol?
     
     //video
@@ -57,7 +57,7 @@ class CallsModuleImp: CallsModule {
     func create(consultationId: String,
                 token: String,
                 userToken: String) {
-        requestManager = RequestManager(host: "https://test-api.drtelemed.ru/api/v1/", token: token , userToken: userToken)
+        requestManager = RequestManager(host: "https://dr-telemed.ru/api/v1/", token: token , userToken: userToken)
         telemedConnectionService = TelemedConnectionService(telemedService: TelemedService(requestManager: requestManager),
                                                             consultationID: Int(consultationId),
                                                             token: userToken)
