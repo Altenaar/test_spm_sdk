@@ -9,7 +9,7 @@ import Foundation
 
 class ChatModuleImp: ChatModule {
     
-    private var requestManager: RequestManagerProtocol = RequestManager(host: "https://dr-telemed.ru/api/v1/", token: "", userToken: "")
+    private var requestManager: RequestManagerProtocol = RequestManager(host: "https://telemed-dr.ru/api/v1/", token: "", userToken: "")
     private var orderService: OrderServiceProtocol?
     private var chatService: ChatServiceProtocol?
     private var consultation: ConsultationInformationObject?
@@ -36,7 +36,7 @@ class ChatModuleImp: ChatModule {
                 token: String,
                 userToken: String,
                 complete: ((_ complete: Bool, _ error: Error?) -> Void)?) {
-        requestManager = RequestManager(host: "https://dr-telemed.ru/api/v1/", token: token , userToken: userToken)
+        requestManager = RequestManager(host: "https://telemed-dr.ru/api/v1/", token: token , userToken: userToken)
         
         orderService = OrderService(requestManager: requestManager)
         chatService = ChatService(requestManager: requestManager, chatParser: ChatParser())
@@ -138,7 +138,7 @@ private extension ChatModuleImp {
                 return
             }
             if let t  = token {
-                self.webSocketChatService = WebSocketChatService("dr-telemed.ru",
+                self.webSocketChatService = WebSocketChatService("telemed-dr.ru",
                                                             chatId: "\(chatId)",
                                                             token: t)
                 self.webSocketChatService?.onMessage = { [weak self] message in
