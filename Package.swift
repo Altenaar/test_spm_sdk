@@ -38,7 +38,7 @@ let package = Package(
         .target(
             name: "SMPFrameworkRGSObjective",
             dependencies: ["WebRTCLocal"],
-            path: "Sources/SMPFrameworkRGSObjective",
+//            path: "Sources/SMPFrameworkRGSObjective"
             publicHeadersPath: "Frameworks/"
             ),
         .binaryTarget(
