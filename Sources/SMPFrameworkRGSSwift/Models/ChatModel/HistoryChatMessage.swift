@@ -16,17 +16,15 @@ public class HistoryChatMessage: Codable {
     public let name: String?
     public let messageID: String?
     public let userType: String?
-    
-    // MARK: - Internal
-    let timestamp, dateInsert, realMessageID: String?
-    let chatID: Int?
-    let image: String?
-    let userPhoto: String?
-    let userID: Int?
-    let answerType: String?
-    let status: String?
-    let clientStatus: String?
-    let file: File?
+    public let timestamp, dateInsert, realMessageID: String?
+    public let chatID: Int?
+    public let image: String?
+    public let userPhoto: String?
+    public let userID: Int?
+    public let answerType: String?
+    public let status: String?
+    public let clientStatus: String?
+    public let file: File?
 
     enum CodingKeys: String, CodingKey {
         case id, timestamp, dateInsert
@@ -61,11 +59,11 @@ public class HistoryChatMessage: Codable {
 }
 
 // MARK: - File
-class File: Codable {
-    let path, pathBase64: String?
-    let mime: String?
-    let thumbnail, thumbnailBase64: String?
-    let name, fileType: String?
+public class File: Codable {
+    public let path, pathBase64: String?
+    public let mime: String?
+    public let thumbnail, thumbnailBase64: String?
+    public let name, fileType: String?
 
     init(path: String?, pathBase64: String?, mime: String?, thumbnail: String?, thumbnailBase64: String?, name: String?, fileType: String?) {
         self.path = path
